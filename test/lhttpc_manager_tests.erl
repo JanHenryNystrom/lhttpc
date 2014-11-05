@@ -38,8 +38,8 @@
 
 start_app() ->
     application:start(crypto),
-    ok = application:start(asn1),
-    ok = application:start(public_key),
+    application:start(asn1),
+    application:start(public_key),
     ok = application:start(ssl),
     _ = application:load(lhttpc),
     ok = application:set_env(lhttpc, pool_size, 3),
