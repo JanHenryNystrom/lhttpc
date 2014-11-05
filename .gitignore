@@ -18,3 +18,7 @@ test/*.log
 erl_crash.dump
 
 .DS_Store
+
+.rebar
+deps
+rebar
