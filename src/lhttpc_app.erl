@@ -1,4 +1,3 @@
-%% -*-erlang-*-
 %%==============================================================================
 %% Copyright 2016 Jan Henry Nystrom <JanHenryNystrom@gmail.com>
 %%
@@ -17,19 +16,30 @@
 
 %%%-------------------------------------------------------------------
 %%% @doc
-%%    A lightweight HTTP client
+%%% The application callback module for lhttpc.
 %%% @end
 %%%
 %% @author Jan Henry Nystrom <JanHenryNystrom@gmail.com>
 %% @copyright (C) 2016, Jan Henry Nystrom <JanHenryNystrom@gmail.com>
 %%%-------------------------------------------------------------------
-{application, lhttpc,
- [{description, "A lightweight HTTP Client"},
-  {vsn, "0.1"},
-  {modules, []},
-  {registered, [lhttpc_sup, lhttpc_manager]},
-  {applications, [kernel, stdlib, jhn_stdlib, ssl]},
-  {mod, {lhttpc_app, no_arg}},
-  {env, [{connection_timeout, 300000}, {pool_size, 50}]}
- ]}.
+-module(lhttpc_app).
+-copyright('Jan Henry Nystrom <JanHenryNystrom@gmail.com>').
 
+-behaviour(application).
+
+%% Application callbacks
+-export([start/2, stop/1]).
+
+%% ===================================================================
+%% Application callbacks
+%% ===================================================================
+
+%%--------------------------------------------------------------------
+-spec start(normal, no_arg) -> {ok, pid()}.
+%%--------------------------------------------------------------------
+start(normal, no_arg) -> lhttpc_sup:start_link().
+
+%%--------------------------------------------------------------------
+-spec stop(_) -> ok.
+%%--------------------------------------------------------------------
+stop(_) -> ok.

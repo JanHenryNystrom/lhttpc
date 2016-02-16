@@ -2,7 +2,7 @@
 %%% ----------------------------------------------------------------------------
 %%% Copyright (c) 2009, Erlang Training and Consulting Ltd.
 %%% All rights reserved.
-%%% 
+%%%
 %%% Redistribution and use in source and binary forms, with or without
 %%% modification, are permitted provided that the following conditions are met:
 %%%    * Redistributions of source code must retain the above copyright
@@ -13,7 +13,7 @@
 %%%    * Neither the name of Erlang Training and Consulting Ltd. nor the
 %%%      names of its contributors may be used to endorse or promote products
 %%%      derived from this software without specific prior written permission.
-%%% 
+%%%
 %%% THIS SOFTWARE IS PROVIDED BY Erlang Training and Consulting Ltd. ''AS IS''
 %%% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 %%% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -34,14 +34,15 @@
 -export([start/2, start/3, read_chunked/3]).
 -export([accept_connection/4]).
 
-start(Module, Responders) ->
-    start(Module, Responders, inet).
+start(Module, Responders) -> start(Module, Responders, inet).
 
 start(Module, Responders, Family) ->
     case get_addr("localhost", Family) of
         {ok, Addr} ->
             LS = listen(Module, Addr, Family),
-            spawn_link(?MODULE, accept_connection, [self(), Module, LS, Responders]),
+            spawn_link(?MODULE,
+                       accept_connection,
+                       [self(), Module, LS, Responders]),
             port(Module, LS);
         Error ->
             Error
@@ -65,8 +66,7 @@ read_chunks(Module, Socket, Acc) ->
     case Module:recv(Socket, 0) of
         {ok, HexSizeExtension} ->
             case chunk_size(HexSizeExtension, []) of
-                0 -> 
-                    list_to_binary(lists:reverse(Acc));
+                0 -> list_to_binary(lists:reverse(Acc));
                 Size ->
                     setopts(Module, Socket, [{packet, raw}]),
                     {ok, <<Chunk:Size/binary, "\r\n">>} =
@@ -79,17 +79,16 @@ read_chunks(Module, Socket, Acc) ->
 
 read_trailers(Module, Socket, Hdrs) ->
     case Module:recv(Socket, 0) of
+        {ok, http_eoh} -> Hdrs;
         {ok, {http_header, _, Name, _, Value}} when is_atom(Name) ->
             Trailer = {atom_to_list(Name), Value},
             read_trailers(Module, Socket, [Trailer | Hdrs]);
         {ok, {http_header, _, Name, _, Value}} when is_list(Name) ->
             Trailer = {Name, Value},
-            read_trailers(Module, Socket, [Trailer | Hdrs]);
-        {ok, http_eoh} -> Hdrs
+            read_trailers(Module, Socket, [Trailer | Hdrs])
     end.
 
-server_loop(Module, Socket, _, _, []) ->
-    Module:close(Socket);
+server_loop(Module, Socket, _, _, []) -> Module:close(Socket);
 server_loop(Module, Socket, Request, Headers, Responders) ->
     case Module:recv(Socket, 0) of
         {ok, {http_request, _, _, _} = NewRequest} ->
@@ -102,10 +101,8 @@ server_loop(Module, Socket, Request, Headers, Responders) ->
             server_loop(Module, Socket, Request, NewHeaders, Responders);
         {ok, http_eoh} ->
             RequestBody = case proplists:get_value("Content-Length", Headers) of
-                undefined ->
-                    <<>>;
-                "0" ->
-                    <<>>;
+                undefined -> <<>>;
+                "0" -> <<>>;
                 SLength ->
                     Length = list_to_integer(SLength),
                     setopts(Module, Socket, [{packet, raw}]),
@@ -121,34 +118,28 @@ server_loop(Module, Socket, Request, Headers, Responders) ->
     end.
 
 listen(ssl, Addr, Family) ->
-    Opts = [
-        Family,
-        {packet, http},
-        binary,
-        {active, false},
-        {ip, Addr},
-        {verify,0},
-        {keyfile, "../test/key.pem"},
-        {certfile, "../test/crt.pem"}
-    ],
-    {ok, LS} = ssl:listen(0, Opts),
-    LS;
-listen(Module, Addr, Family) ->
-    {ok, LS} = Module:listen(0, [
-            Family,
+    Opts = [Family,
             {packet, http},
             binary,
             {active, false},
-            {ip, Addr}
-        ]),
+            {ip, Addr},
+            {verify,0},
+            {keyfile, "../test/key.pem"},
+            {certfile, "../test/crt.pem"}],
+    {ok, LS} = ssl:listen(0, Opts),
+    LS;
+listen(Module, Addr, Family) ->
+    {ok, LS} = Module:listen(0, [Family,
+                                 {packet, http},
+                                 binary,
+                                 {active, false},
+                                 {ip, Addr}]),
     LS.
 
 get_addr(Host, Family) ->
     case inet:getaddr(Host, Family) of
-        {ok, Addr} ->
-            {ok, Addr};
-        _ ->
-            {error, family_not_supported}
+        {ok, Addr} -> {ok, Addr};
+        _ -> {error, family_not_supported}
     end.
 
 accept(ssl, ListenSocket) ->
@@ -159,10 +150,8 @@ accept(Module, ListenSocket) ->
     {ok, Socket} = Module:accept(ListenSocket, 1000),
     Socket.
 
-setopts(ssl, Socket, Options) ->
-    ssl:setopts(Socket, Options);
-setopts(_, Socket, Options) ->
-    inet:setopts(Socket, Options).
+setopts(ssl, Socket, Options) -> ssl:setopts(Socket, Options);
+setopts(_, Socket, Options) -> inet:setopts(Socket, Options).
 
 port(ssl, Socket) ->
     {ok, {_, Port}} = ssl:sockname(Socket),

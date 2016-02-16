@@ -120,12 +120,12 @@ request(From, Host, Port, Ssl, Path, Method, Hdrs, Body, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 execute(From, Host, Port, Ssl, Path, Method, Hdrs, Body, Options) ->
-    UploadWindowSize = proplists:get_value(partial_upload, Options),
-    PartialUpload = proplists:is_defined(partial_upload, Options),
-    PartialDownload = proplists:is_defined(partial_download, Options),
-    PartialDownloadOptions = proplists:get_value(partial_download, Options, []),
+    UploadWindowSize = plist:find(partial_upload, Options),
+    PartialUpload = plist:member(partial_upload, Options),
+    PartialDownload = plist:member(partial_download, Options),
+    PartialDownloadOptions = plist:find(partial_download, Options, []),
     NormalizedMethod = lhttpc_lib:normalize_method(Method),
-    Proxy = case proplists:get_value(proxy, Options) of
+    Proxy = case plist:find(proxy, Options) of
         undefined ->
             undefined;
         ProxyUrl when is_list(ProxyUrl), not Ssl ->
@@ -138,7 +138,7 @@ execute(From, Host, Port, Ssl, Path, Method, Hdrs, Body, Options) ->
     {ChunkedUpload, Request} = lhttpc_lib:format_request(Path, NormalizedMethod,
         Hdrs, Host, Port, Body, PartialUpload),
     %SocketRequest = {socket, self(), Host, Port, Ssl},
-    Pool = proplists:get_value(pool, Options, whereis(lhttpc_manager)),
+    Pool = plist:find(pool, Options, whereis(lhttpc_manager)),
     %% Get a socket for the pool or exit
     %Socket = lhttpc_manager:ensure_call(Pool, SocketRequest, Options),
     Socket = lhttpc_manager:ensure_call(Pool, self(), Host, Port, Ssl, Options),
@@ -151,21 +151,21 @@ execute(From, Host, Port, Ssl, Path, Method, Hdrs, Body, Options) ->
         requester = From,
         request_headers = Hdrs,
         socket = Socket,
-        connect_timeout = proplists:get_value(connect_timeout, Options,
+        connect_timeout = plist:find(connect_timeout, Options,
             infinity),
-        connect_options = proplists:get_value(connect_options, Options, []),
-        attempts = 1 + proplists:get_value(send_retry, Options, 1),
+        connect_options = plist:find(connect_options, Options, []),
+        attempts = 1 + plist:find(send_retry, Options, 1),
         partial_upload = PartialUpload,
         upload_window = UploadWindowSize,
         chunked_upload = ChunkedUpload,
         partial_download = PartialDownload,
-        download_window = proplists:get_value(window_size,
+        download_window = plist:find(window_size,
             PartialDownloadOptions, infinity),
-        part_size = proplists:get_value(part_size,
+        part_size = plist:find(part_size,
             PartialDownloadOptions, infinity),
         proxy = Proxy,
         proxy_setup = (Socket =/= undefined),
-        proxy_ssl_options = proplists:get_value(proxy_ssl_options, Options, [])
+        proxy_ssl_options = plist:find(proxy_ssl_options, Options, [])
     },
     Response = case send_request(State) of
         {R, undefined} ->

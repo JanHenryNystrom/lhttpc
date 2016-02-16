@@ -1,5 +1,5 @@
 #==============================================================================
-# Copyright 2014 Jan Henry Nystrom <JanHenryNystrom@gmail.com>
+# Copyright 2014-2016 Jan Henry Nystrom <JanHenryNystrom@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

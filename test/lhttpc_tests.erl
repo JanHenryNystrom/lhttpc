@@ -99,16 +99,10 @@ test_no(N, Tests) ->
 
 %%% Eunit setup stuff
 
-start_app() ->
-    application:start(crypto),
-    application:start(asn1),
-    application:start(public_key),
-    ok = application:start(ssl),
-    ok = lhttpc:start().
+start_app() -> element(2, application:ensure_all_started(lhttpc)).
 
-stop_app(_) ->
-    ok = lhttpc:stop(),
-    ok = application:stop(ssl).
+stop_app(Apps) -> [application:stop(App) || App <- Apps].
+
 
 tcp_test_() ->
     {inorder, 
@@ -400,7 +394,7 @@ simple_put() ->
 post() ->
     Port = start(gen_tcp, [fun copy_body/5]),
     URL = url(Port, "/post"),
-    {X, Y, Z} = now(),
+    {X, Y, Z} = os:timestamp(),
     Body = [
         "This is a rather simple post :)",
         integer_to_list(X),
@@ -416,7 +410,7 @@ post() ->
 post_100_continue() ->
     Port = start(gen_tcp, [fun copy_body_100_continue/5]),
     URL = url(Port, "/post"),
-    {X, Y, Z} = now(),
+    {X, Y, Z} = os:timestamp(),
     Body = [
         "This is a rather simple post :)",
         integer_to_list(X),

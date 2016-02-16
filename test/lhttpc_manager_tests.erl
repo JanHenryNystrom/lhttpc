@@ -37,17 +37,11 @@
 %%% Eunit setup stuff
 
 start_app() ->
-    application:start(crypto),
-    application:start(asn1),
-    application:start(public_key),
-    ok = application:start(ssl),
     _ = application:load(lhttpc),
     ok = application:set_env(lhttpc, pool_size, 3),
-    ok = application:start(lhttpc).
+    element(2, application:ensure_all_started(lhttpc)).
 
-stop_app(_) ->
-    ok = application:stop(lhttpc),
-    ok = application:stop(ssl).
+stop_app(Apps) -> [application:stop(App) || App <- Apps].
 
 manager_test_() ->
     {inorder,
@@ -312,7 +306,8 @@ closed_race_cond() ->
 
     Result2 = receive
         {result, R} -> R
-        after 5000 -> erlang:error("Timeout receiving result from child process")
+        after 5000 ->
+                erlang:error("Timeout receiving result from child process")
     end,
 
     ?assertMatch(no_socket, Result2),
@@ -348,16 +343,15 @@ client_loop(Parent, Socket) ->
         {connect, Ref} ->
             Args = {socket, self(), ?HOST, get_port(), ?SSL},
             NewSocket = case gen_server:call(lhttpc_manager, Args, infinity) of
-                no_socket ->
-                    socket_server:connect(get_port());
-                {ok, S} ->
-                    S
+                no_socket -> socket_server:connect(get_port());
+                {ok, S} -> S
             end,
             Parent ! {connected, Ref, NewSocket},
             client_loop(Parent, NewSocket);
         {return_socket, Ref} ->
             gen_tcp:controlling_process(Socket, whereis(lhttpc_manager)),
-            ok = gen_server:call(lhttpc_manager, {done, ?HOST, get_port(), ?SSL, Socket}),
+            ok = gen_server:call(lhttpc_manager,
+                                 {done, ?HOST, get_port(), ?SSL, Socket}),
             Parent ! {returned, Ref},
             client_loop(Parent, nil)
     end.
@@ -365,60 +359,42 @@ client_loop(Parent, Socket) ->
 ping_client(Client) ->
     Ref = make_ref(),
     Client ! {ping, Ref},
-    receive
-        {pong, Ref} ->
-            ok
-    after 2000 ->
-            timeout
+    receive {pong, Ref} -> ok
+    after 2000 -> timeout
     end.
 
 connect_client(Client) ->
     Ref = make_ref(),
     Client ! {connect, Ref},
-    receive
-        {connected, Ref, Socket} ->
-            {ok, Socket}
-    after 2000 ->
-            timeout
+    receive {connected, Ref, Socket} -> {ok, Socket}
+    after 2000 -> timeout
     end.
 
 disconnect_client(Client) ->
     Ref = make_ref(),
     Client ! {return_socket, Ref},
-    receive
-        {returned, Ref} ->
-            ok
-    after 2000 ->
-            timeout
+    receive {returned, Ref} -> ok
+    after 2000 -> timeout
     end.
 
 get_client_socket(Client) ->
     Ref = make_ref(),
     Client ! {get_socket, Ref},
-    receive
-        {socket, Ref, Socket} ->
-            {ok, Socket}
-    after 2000 ->
-            timeout
+    receive {socket, Ref, Socket} -> {ok, Socket}
+    after 2000 -> timeout
     end.
 
 client_peek_socket(Client) ->
     Ref = make_ref(),
     Client ! {peek_socket, Ref, self()},
-    receive
-        {result, Ref, Result} ->
-            Result
-    after 5000 ->
-            timeout
+    receive {result, Ref, Result} -> Result
+    after 5000 -> timeout
     end.
 
 stop_client(Client) ->
     Client ! stop,
-    receive
-        stopped ->
-            ok
-    after 2000 ->
-            timeout
+    receive stopped -> ok
+    after 2000 -> timeout
     end.
 
 get_port() ->
